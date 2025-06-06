@@ -1,0 +1,7 @@
+name: minecraft_signup_backend
+version: '1.0-SNAPSHOT'
+main: org.link_uuid.minecraft_signup_backend.Minecraft_signup_backend
+api-version: '1.21'
+commands:
+  addip:
+  removeip:
