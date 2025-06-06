@@ -1,8 +1,8 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 require('dotenv').config(); // For loading environment variables
-
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const https = require('https');
 
 // Event: Bot is ready
 client.once('ready', () => {
@@ -27,21 +27,61 @@ client.on('messageCreate', async (message) => {
         //message.channel.send(`Here is your avatar: ${avatar_url}`);
 
         console.log(`Received message from ${discord_username} (${discord_id}): ${minecraft_player}`);
-        try {
-            const response = await fetch('http://192.168.0.29:8080/register', { // Example URL
+            /*const response = await fetch('https://www.easonmc.org:8080/register', { // Example URL
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ discord_username, discord_id,
                     minecraft_player, avatar_url })
+            });*/
+            const postData = JSON.stringify({
+                discord_username,
+                discord_id,
+                minecraft_player,
+                avatar_url,
             });
-            const data = await response.json();
+
+            const options = {
+            hostname: process.env.HOSTNAME,
+            port: process.env.PORT,
+            path: '/register',
+            method: 'POST',
+            headers: {
+                'Content-Length': postData.length,
+              },
+             agent: new https.Agent({
+                rejectUnauthorized: false, // Allow self-signed certificates
+            }),
+           };
+
+            const req = https.request(options, (res) => {
+            let data = '';
+
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+
+            res.on('end', () => {
+                //console.log('Response from server:', JSON.parse(data));
+                message.react('✅');
+            });
+            });
+
+            req.on('error', (error) => {
+            console.error('Error fetching data:', error);
+            message.reply('Failed to fetch data from the server.');
+            });
+
+            req.write(postData);
+            req.end();
+            /*console.log('Response from server:', response.data);
+            //const data = await response.json();
             message.react('✅');
             //message.reply(`Fetched data: ${JSON.stringify(data)}`);
         } catch (error) {
             console.error(error);
            // message.reply('Failed to fetch data from the URL.');
-        }
-    }
+        }*/
+   }
 });
 // Log in to Discord with your bot token
 client.login(process.env.DISCORD_TOKEN);

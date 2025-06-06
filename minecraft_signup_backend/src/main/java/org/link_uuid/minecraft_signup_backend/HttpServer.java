@@ -1,5 +1,8 @@
 package org.link_uuid.minecraft_signup_backend;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.security.KeyStore;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -11,10 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLServerSocketFactory;
+
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.plugin.java.JavaPlugin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -25,9 +32,46 @@ public class HttpServer extends NanoHTTPD {
      private final String databaseUrl;
 
 
-    public HttpServer(int port, JavaPlugin plugin) {
+    public HttpServer(int port, Minecraft_signup_backend plugin) {
         super(port);
-        this.databaseUrl = InitializeDatabase.getDatabaseUrl(); // Get the database URL from InitializeDatabase
+        this.databaseUrl = InitializeDatabase.getDatabaseUrl(); 
+        enableHttps(plugin);// Get the database URL from InitializeDatabase
+    }
+
+    private void enableHttps(Minecraft_signup_backend plugin) {
+        try {
+            // Load the keystore
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            FileInputStream keystoreStream = new FileInputStream(plugin.getDataFolder() + "/keystore.jks"); // Path to your keystore file
+            keystore.load(keystoreStream, "password".toCharArray()); // Keystore password
+
+            // Initialize KeyManagerFactory
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyManagerFactory.init(keystore, "password".toCharArray()); // Key password
+
+            // Create SSLServerSocketFactory
+            SSLServerSocketFactory sslServerSocketFactory = NanoHTTPD.makeSSLSocketFactory(keystore, keyManagerFactory.getKeyManagers());
+
+            // Specify supported protocols (e.g., TLSv1.2, TLSv1.3)
+            String[] supportedProtocols = new String[] { "TLSv1.2", "TLSv1.3" };
+
+            // Use NanoHTTPD's SecureServerSocketFactory with supported protocols
+            setServerSocketFactory(new SecureServerSocketFactory(sslServerSocketFactory, supportedProtocols));
+            plugin.getLogger().info("HTTPS is enabled on port " + getListeningPort());
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to enable HTTPS: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+   public static class Entry {
+        public String uuid;
+        public String name;
+
+        public Entry(String uuid, String name) {
+            this.uuid = uuid;
+            this.name = name;
+        }
     }
 
     @Override
@@ -160,7 +204,7 @@ public class HttpServer extends NanoHTTPD {
             }
 
             Map<String, Object> responseData = new HashMap<>();
-            System.out.println("User IP Address: " + userIpAddress);
+            //System.out.println("User IP Address: " + userIpAddress);
            // System.out.println("PermittedUser: " + PermittedUser);
             responseData.put("PermittedUser", PermittedUser);
             responseData.put("players", players);
@@ -172,7 +216,11 @@ public class HttpServer extends NanoHTTPD {
             response = newFixedLengthResponse(Response.Status.OK, "application/json", jsonResponse);
         } catch (SQLException e) {
             e.printStackTrace();
-            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"Failed to retrieve data from the database\"}");
+            response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"Failed to retrieve data from the database\"}");
+            response.addHeader("Access-Control-Allow-Origin", "*");
+            response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+            return response; // Return the response immediately
         }
     } else if (uri.equals("/edit_save")) {
             Map<String, String> files = new HashMap<>();
@@ -342,6 +390,76 @@ public class HttpServer extends NanoHTTPD {
             }
 
            response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"success\", \"message\":\"Player data removed successfully\"}");
+
+
+            //response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"success\", \"message\":\"Player data updated successfully\"}");
+    }else if (uri.equals("/export_whitelist")) {
+            Map<String, String> files = new HashMap<>();
+            try {
+                session.parseBody(files); // Parse the request body
+            } catch (IOException | NanoHTTPD.ResponseException e) {
+                e.printStackTrace();
+                response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"Failed to parse request body\"}");
+                response.addHeader("Access-Control-Allow-Origin", "*");
+                response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+                return response;
+            }
+
+            String requestBody = files.get("postData");
+            if (requestBody == null) {
+                response = newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json", "{\"error\":\"Missing request body\"}");
+                response.addHeader("Access-Control-Allow-Origin", "*");
+                response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+                return response;
+            }
+
+
+            // Parse JSON from the request body
+            System.out.println("Received export");
+            JsonObject json = gson.fromJson(requestBody, JsonObject.class);
+            int groups = json.get("groups").getAsInt();
+            System.out.println("Received export request for group: " + groups);
+            List<Entry> entries = new ArrayList<>();
+
+            try (Connection conn = DriverManager.getConnection(databaseUrl)) {
+            String selectSQL = "SELECT minecraft_player_uuid, minecraft_player FROM players WHERE groups = ?";
+            PreparedStatement stmt = conn.prepareStatement(selectSQL);
+            stmt.setInt(1, groups);
+            ResultSet rs = stmt.executeQuery();
+            // Create a list to store all player records
+            //userIpAddress = getPublicIP(session);
+            //userAgent = session.getHeaders().get("user-agent");
+
+            while (rs.next()) {
+                System.out.println("Exporting whitelist for group: " + groups);
+                entries.add(new Entry(rs.getString("minecraft_player_uuid"), rs.getString("minecraft_player")));
+            }
+            }catch (SQLException e) {
+                e.printStackTrace();
+                response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"Failed to retrieve data from the database\"}"); 
+                response.addHeader("Access-Control-Allow-Origin", "*");
+                response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+                return response;
+            }
+            try {
+             File tempFile = File.createTempFile("groups_"+groups, ".json");
+             ObjectMapper mapper = new ObjectMapper();
+             mapper.enable(SerializationFeature.INDENT_OUTPUT);
+             mapper.writeValue(tempFile, entries);
+             FileInputStream fis = new FileInputStream(tempFile);
+             response = newFixedLengthResponse(Response.Status.OK, "application/json", fis, tempFile.length());
+             } catch (IOException e) {
+                e.printStackTrace();
+                response = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "application/json", "{\"error\":\"Failed to create temporary file\"}");
+                response.addHeader("Access-Control-Allow-Origin", "*");
+                response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+                return response;
+             }
+
 
 
             //response = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"success\", \"message\":\"Player data updated successfully\"}");

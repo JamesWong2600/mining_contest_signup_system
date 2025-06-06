@@ -16,6 +16,9 @@ public final class Minecraft_signup_backend extends JavaPlugin {
     InitializeDatabase.initializeDatabase(this);
     //Bukkit.getServer().getPluginManager().registerEvents(new playerjoin(this), this);
     getLogger().info("Plugin enabled!");
+    if (!getDataFolder().exists()) {
+        getDataFolder().mkdirs();
+    }
     server = new HttpServer(8080, this); // Initialize the HTTP server on port 8080
     this.getCommand("addip").setExecutor(new addip(this));
     this.getCommand("removeip").setExecutor(new RemoveIP(this));

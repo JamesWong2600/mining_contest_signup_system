@@ -3,8 +3,8 @@
   background-image: url('background.jpg'); /* Path to the image */
   background-size: cover; /* Make the image cover the entire background */
   background-position: center; /* Center the image */
-  background-repeat: no-repeat; /* Prevent the image from repeating */
-  height: 100vh; /* Set the height to fill the viewport */
+  background-repeat: repeat; /* Prevent the image from repeating */
+  min-height: 100vh; /* Set the height to fill the viewport */
   color: white; /* Optional: Set text color to contrast with the background */
 }
 

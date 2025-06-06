@@ -7,3 +7,5 @@ minecraft_signup_backend/.idea
 minecraft_signup_backend/.vscode
 minecraft_signup_backend/out
 minecraft_signup_backend/target
+.vscode
+.idea

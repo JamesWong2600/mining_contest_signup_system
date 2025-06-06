@@ -9,7 +9,7 @@ function App() {
   const [formData, setFormData] = useState({}); // Track form data for editing
     useEffect(() => {
     const fetchPlayers = () => {
-      fetch(`${config.apiBaseUrl}:8080/get_all_players`)
+      fetch(`${config.apiBaseUrl}/get_all_players`)
         .then((response) => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -43,7 +43,7 @@ function App() {
       const jsonData = {
         passcode: userInput,
       };
-      fetch(`${config.apiBaseUrl}:8080/check_auth`, {
+      fetch(`${config.apiBaseUrl}/check_auth`, {
       method: 'POST',
       body: JSON.stringify(jsonData), 
     })
@@ -71,7 +71,7 @@ function App() {
       const jsonData = {
         passcode: userInput,
       };
-      fetch(`${config.apiBaseUrl}:8080/check_auth`, {
+      fetch(`${config.apiBaseUrl}/check_auth`, {
       method: 'POST',
       body: JSON.stringify(jsonData), 
     })
@@ -94,11 +94,71 @@ function App() {
       });
   };
 
+     const handleExportClick = () => {
+    const userInput = prompt("請輸入passcode");
+      const jsonData = {
+        passcode: userInput,
+      };
+      fetch(`${config.apiBaseUrl}/check_auth`, {
+      method: 'POST',
+      body: JSON.stringify(jsonData), 
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.isAuthorized) {
+          downloadFileWithGroup()
+        } else {
+          alert('Unauthorized access. Please try again.');
+          console.log('Unauthorized access attempt with passcode:', userInput);
+        }
+      })
+      .catch((error) => {console.error('Error saving player:', error)
+      });
+  };
+
+
+    const downloadFileWithGroup = async () => {
+    const userInput = prompt("請輸入需要輸出的分組");
+    if (!userInput) return;
+    const jsonData = {
+        groups: userInput
+      };
+
+    try {
+      const response = await fetch(`${config.apiBaseUrl}/export_whitelist`, {
+        method: "POST",
+        body: JSON.stringify(jsonData),
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob =  await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      alert('成功輸出');
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `groups_${userInput}.json`; // or use backend-disposition name
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Downloaded failed: " + error.message);
+    }
+    };
+
    const handleDelete = (index) => {
       const jsonData = {
         key_index: index,
       };
-    fetch(`${config.apiBaseUrl}:8080/drop_sign_up`, {
+    fetch(`${config.apiBaseUrl}/drop_sign_up`, {
       method: 'POST',
       body: JSON.stringify(jsonData),
     })
@@ -123,7 +183,7 @@ function App() {
   const handleSave = (index) => {
     const updatedPlayer = { ...players[index], ...formData, index };
     console.log(`Saving changes for player at index ${index}:`, updatedPlayer);
-    fetch(`${config.apiBaseUrl}:8080/edit_save`, {
+    fetch(`${config.apiBaseUrl}/edit_save`, {
       method: 'POST',
       body: JSON.stringify(updatedPlayer),
     })
@@ -292,6 +352,22 @@ function App() {
                   ))}
                 </tbody>
               </table>
+              <button
+                // onClick={() => handleSave(index)} 
+                onClick={() => handleExportClick()}
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '14px',
+                      backgroundColor: 'orange', // Red background
+                      color: 'white', // White text
+                      border: 'none', // Remove border
+                      borderRadius: '5px', // Rounded corners
+                      cursor: 'pointer', // Pointer cursor
+                      boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)', // Add shadow
+                    }}
+              >
+                輸出白名單
+              </button>
             </div>
           ) : (
             <div>
