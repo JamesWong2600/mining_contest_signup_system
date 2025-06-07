@@ -9,3 +9,5 @@ minecraft_signup_backend/out
 minecraft_signup_backend/target
 .vscode
 .idea
+signup_website/src/admin.txt
+signup_website/signup_website.tar

@@ -8,14 +8,17 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "cross-env": "^7.0.3",
+    "http-proxy-middleware": "^3.0.5",
+    "https-browserify": "^1.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-native-fs": "^2.20.0",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
+    "superagent": "^10.2.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "cross-env HTTPS=true PORT=4000 react-scripts start",
+    "start": "cross-env HTTPS=true PORT=3000 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

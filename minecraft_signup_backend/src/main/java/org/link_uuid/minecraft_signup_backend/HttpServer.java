@@ -205,7 +205,7 @@ public class HttpServer extends NanoHTTPD {
 
             Map<String, Object> responseData = new HashMap<>();
             //System.out.println("User IP Address: " + userIpAddress);
-           // System.out.println("PermittedUser: " + PermittedUser);
+            //System.out.println(session.getHeaders());
             responseData.put("PermittedUser", PermittedUser);
             responseData.put("players", players);
 
@@ -491,11 +491,13 @@ public class HttpServer extends NanoHTTPD {
 
             private String getPublicIP(IHTTPSession session) {
             // Check for the X-Forwarded-For header (used by proxies)
-            String userIpAddress = session.getHeaders().get("X-Forwarded-For");
-            if (userIpAddress == null || userIpAddress.isEmpty()) {
+            String userIpAddress = session.getHeaders().get("x-forwarded-for");
+            //System.out.println("X-Forwarded-For IP Address: " + userIpAddress);
+            //if (userIpAddress == null || userIpAddress.isEmpty()) {
             // Fallback to remote-addr header
-            userIpAddress = session.getHeaders().get("remote-addr");
-            }
+           // userIpAddress = session.getHeaders().get("remote-addr");
+
+           // }
             return userIpAddress;
             }
 
