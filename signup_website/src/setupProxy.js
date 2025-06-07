@@ -1,8 +1,10 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 //const config = require('./config.json');
-const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+
 
 module.exports = function (app) {
+ const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+ console.log('API Base URL:', apiBaseUrl);
   app.use(
     '/api',
     createProxyMiddleware({
